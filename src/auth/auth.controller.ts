@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get, Request } from "@nestjs/common";
+import { Controller, Post, Body, UseGuards, Get, Request, UnauthorizedException, NotFoundException } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { UsersService } from "../users/users.service";
 import { CreateUserDto } from "../users/dto/create-user.dto";
@@ -6,7 +6,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { Request as ExpressRequest } from 'express';
 
 interface AuthenticatedRequest extends ExpressRequest {
-  user: { id: string; email: string; role: string };
+  user: { id: number; email: string; role: string, firstName: string, lastName: string };
 }
 
 @Controller("auth")
@@ -29,7 +29,29 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('profile')
-  getProfile(@Request() req: AuthenticatedRequest) {
-    return req.user;
+  async getProfile(@Request() req: AuthenticatedRequest) {
+    if (!req.user?.id) {
+      throw new UnauthorizedException('User not found in request');
+    }
+  
+    // Fetch full user from database
+    const user = await this.usersService.findOne(req.user.id);
+  
+    if (!user) {
+      throw new NotFoundException('User does not exist');
+    }
+  
+    return {
+      status: { message: 'Get Profile successfully!', code: 0 },
+      data: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+    };
   }
+  
+  
 }
