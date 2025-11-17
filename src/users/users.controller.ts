@@ -23,16 +23,16 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  @Get()
-  async findAll(@Body() query: GetPaginationDto) {
-    const result = await this.usersService.findAll(query);
-  
-    return success({
-      totalElements: result.totalElements,
-      totalPages: result.totalPages,
-      content: result.content,
-    });
-  }
+@Post('get-all')
+async findAll(@Body() query: GetPaginationDto) {
+  const result = await this.usersService.findAll(query);
+
+  return success({
+    totalElements: result.totalElements,
+    totalPages: result.totalPages,
+    content: result.content,
+  });
+}
 
   @Get(":id")
   findOne(@Param("id") id: number) {
