@@ -10,14 +10,6 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string) {
-    const user = await this.usersService.findByEmail(email);
-    if (user && await bcrypt.compare(password, user.password)) {
-      return user;
-    }
-    throw new UnauthorizedException('Invalid credentials');
-  }
-
   async login(user: any) {
     const payload = { sub: user.id, email: user.email };
     return { access_token: this.jwtService.sign(payload) };
@@ -25,14 +17,14 @@ export class AuthService {
 
   async loginWithCredentials(email: string, password: string) {
     const user = await this.usersService.findByEmail(email);
-
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
+  
+    if (!user || !user.isActive || !user.password || !(await bcrypt.compare(password, user.password))) {
+      throw new UnauthorizedException('Invalid credentials or account not verified');
+    }    
+  
     const payload = { sub: user.id, email: user.email, role: user.role };
     const token = this.jwtService.sign(payload);
-
+  
     return {
       status: {
         message: 'Login successful',

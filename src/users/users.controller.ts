@@ -18,9 +18,24 @@ import { GetPaginationDto } from "@/common/pagination.dto";
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  @Post('create')
+  async create(@Body() createUserDto: CreateUserDto) {
+    const result = await this.usersService.create(createUserDto);
+    return success(
+      {
+        firstName: result.firstName,
+        lastName: result.lastName,
+        phoneNumber: result.phoneNumber,
+        cidNumber: result.cidNumber,
+        staffId: result.staffId,
+        deptName: result.deptName,
+        email: result.email,
+        role: result.role,
+        avatar: result.avatar,
+        isActive: result.isActive
+      },
+      "Create new users successfully!"
+    );
   }
 
 @Post('get-all')

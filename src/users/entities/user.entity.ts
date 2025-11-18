@@ -11,19 +11,28 @@ export class User {
   @Column()
   lastName!: string;
 
-  @Column({ unique: true })
-  email!: string;
+  @Column({ unique: true, nullable: true })
+  staffId!: string;
+
+  @Column({ nullable: true })
+  deptName!: string;
+
+  @Column({ nullable: true })
+  cidNumber!: string;
+
+  @Column({ nullable: true })
+  password?: string;
 
   @Column()
-  password!: string;
+  phoneNumber!: string;
 
   @Column({ unique: true })
-  phoneNumber!: string;
+  email!: string;
 
   @Column({ default: true })
   isActive!: boolean;
 
-  @Column({ default: 'user' })
+  @Column({ default: 'ROLE_USER' })
   role!: string;
 
   @Column({ nullable: true })
@@ -31,5 +40,11 @@ export class User {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
+
+  @Column({ type: 'varchar', nullable: true })
+  verificationKey: string | null = null;
+  
+  @Column({ type: 'timestamp', nullable: true })
+  verificationExpire: Date | null = null;
   
 }

@@ -67,4 +67,10 @@ export class AuthController {
       "Get profile successfully!"
     );
   }
+
+  @Post("activate")
+  async activate(@Body() body: { email: string; key: string }) {
+    const result = await this.usersService.activateUser(body.email, body.key);
+    return result;
+  }
 }
