@@ -13,12 +13,13 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { success } from "@/utils/response.util";
 import { GetPaginationDto } from "@/common/pagination.dto";
+import { User } from "./entities/user.entity";
 
 @Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post('create')
+  @Post("create-user")
   async create(@Body() createUserDto: CreateUserDto) {
     const result = await this.usersService.create(createUserDto);
     return success(
@@ -32,35 +33,45 @@ export class UsersController {
         email: result.email,
         role: result.role,
         avatar: result.avatar,
-        isActive: result.isActive
+        isActive: result.isActive,
       },
       "Create new users successfully!"
     );
   }
 
-@Post('get-all')
-async findAll(@Body() query: GetPaginationDto) {
-  const result = await this.usersService.findAll(query);
+  @Post("get-all")
+  async findAll(@Body() query: GetPaginationDto) {
+    const result = await this.usersService.findAll(query);
 
-  return success({
-    totalElements: result.totalElements,
-    totalPages: result.totalPages,
-    content: result.content,
-  });
-}
-
-  @Get(":id")
-  findOne(@Param("id") id: number) {
-    return this.usersService.findOne(id);
+    return success({
+      totalElements: result.totalElements,
+      totalPages: result.totalPages,
+      content: result.content,
+    });
   }
 
-  @Patch(":id")
-  update(@Param("id") id: number, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
+  @Post("get-user")
+  findOne(@Body() body: { id: number }) {
+    return this.usersService.findOne(body.id);
   }
 
-  @Delete(":id")
-  remove(@Param("id") id: number) {
-    return this.usersService.remove(id);
+  @Post("update-user")
+  async updateUser(@Body() body: { id: number; data: Partial<User> }) {
+    return this.usersService.update(body.id, body.data);
+  }
+
+  @Post("delete-user")
+  remove(@Body() body: { id: number }) {
+    return this.usersService.remove(body.id);
+  }
+
+  @Post("resend-activation-key")
+  async resendActivationKey(@Body() body: { id: number }) {
+    return this.usersService.resendActivationKey(body.id);
+  }
+
+  @Post("block-user")
+  async blockUser(@Body() body: { id: number; block: boolean }) {
+    return this.usersService.blockUser(body.id, body.block);
   }
 }

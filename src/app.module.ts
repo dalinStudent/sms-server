@@ -10,9 +10,16 @@ import { AuthModule } from './auth/auth.module';
 import { Auth } from './auth/entities/auth.entity';
 import { ContactsModule } from './contacts/contacts.module';
 import { MailModule } from './mail/mail.module';
+import { RolesModule } from './roles/roles.module';
+import { Role } from './roles/entities/role.entity';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',
@@ -22,15 +29,16 @@ import { MailModule } from './mail/mail.module';
       database: process.env.DB_NAME || 'sms_db',
       synchronize: true,
       logging: false,
-      entities: [User, Contact, Message, MessageLog, Auth],
+      entities: [User, Contact, Message, MessageLog, Auth, Role],
     }),
-    TypeOrmModule.forFeature([User, Contact, Message, MessageLog]),
+    TypeOrmModule.forFeature([User, Contact, Message, MessageLog, Role]),
     UsersModule,
     MessagesModule,
     AuthModule,
     MessagesModule,
     ContactsModule,
-    MailModule
+    MailModule,
+    RolesModule
   ],
 })
 export class AppModule {}

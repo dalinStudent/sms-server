@@ -32,12 +32,6 @@ export class AuthController {
     private usersService: UsersService
   ) {}
 
-  @Post("register")
-  async register(@Body() createUserDto: CreateUserDto) {
-    const user = await this.usersService.create(createUserDto);
-    return { message: "User registered", userId: user.id };
-  }
-
   @Post("login")
   async login(@Body() body: { email: string; password: string }) {
     return this.authService.loginWithCredentials(body.email, body.password);
@@ -50,7 +44,7 @@ export class AuthController {
       throw new UnauthorizedException("User not found in request");
     }
 
-    const user = await this.usersService.findOne(req.user.id);
+    const user = await this.usersService.findProfile(req.user.id);
 
     if (!user) {
       throw new NotFoundException("User does not exist");
@@ -69,8 +63,14 @@ export class AuthController {
   }
 
   @Post("activate")
-  async activate(@Body() body: { email: string; key: string }) {
-    const result = await this.usersService.activateUser(body.email, body.key);
+  async activate(@Body() body: { activateKey: string; password: string }) {
+    const { activateKey, password } = body;
+    const result = await this.usersService.activateUser(activateKey, password);
     return result;
+  }
+
+  @Post("resend-activation-key")
+  async resendActivationKey(@Body() body: { id: number }) {
+    return this.usersService.resendActivationKey(body.id);
   }
 }

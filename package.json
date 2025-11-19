@@ -14,6 +14,7 @@
   "description": "",
   "dependencies": {
     "@nestjs/common": "^11.1.8",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.8",
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/mapped-types": "*",
@@ -21,6 +22,7 @@
     "@nestjs/platform-express": "^11.1.8",
     "@nestjs/typeorm": "^11.0.0",
     "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -32,6 +34,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.3",
@@ -42,12 +45,14 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.10.0",
+    "@types/nodemailer": "^7.0.4",
     "@types/passport-jwt": "^4.0.1",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
