@@ -24,7 +24,7 @@ export class MailService {
     });
   }
   async sendVerificationEmail(email: string, key: string) {
-    const verificationUrl = `${process.env.FRONTEND_URL}/auth/activate-account?key=${key}`;
+    const verificationUrl = `http://localhost:5173/auth/activate-account?key=${key}`;
     const html = `
           <p>Hello,</p>
           <p>Your account has been created, please click on the link to activate it now:</p>

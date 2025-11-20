@@ -4,16 +4,12 @@ import {
   Body,
   UseGuards,
   Get,
-  Request,
-  UnauthorizedException,
-  NotFoundException,
+  Request
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { UsersService } from "../users/users.service";
-import { CreateUserDto } from "../users/dto/create-user.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { Request as ExpressRequest } from "express";
-import { success } from "@/utils/response.util";
 
 interface AuthenticatedRequest extends ExpressRequest {
   user: {
@@ -29,7 +25,7 @@ interface AuthenticatedRequest extends ExpressRequest {
 export class AuthController {
   constructor(
     private authService: AuthService,
-    private usersService: UsersService
+    private usersService: UsersService,
   ) {}
 
   @Post("login")
@@ -37,30 +33,18 @@ export class AuthController {
     return this.authService.loginWithCredentials(body.email, body.password);
   }
 
-  @UseGuards(AuthGuard("jwt"))
-  @Get("profile")
-  async getProfile(@Request() req: AuthenticatedRequest) {
-    if (!req.user?.id) {
-      throw new UnauthorizedException("User not found in request");
-    }
+@UseGuards(AuthGuard("jwt"))
+@Get("profile")
+async getProfile(@Request() req: AuthenticatedRequest) {
+  return {
+    id: req.user.id,
+    email: req.user.email,
+    firstName: req.user.firstName,
+    lastName: req.user.lastName,
+    role: req.user.role,
+  };
+}
 
-    const user = await this.usersService.findProfile(req.user.id);
-
-    if (!user) {
-      throw new NotFoundException("User does not exist");
-    }
-
-    return success(
-      {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-      },
-      "Get profile successfully!"
-    );
-  }
 
   @Post("activate")
   async activate(@Body() body: { activateKey: string; password: string }) {

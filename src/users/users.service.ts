@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "./entities/user.entity";
@@ -13,7 +17,7 @@ import * as bcrypt from "bcrypt";
 export class UsersService {
   constructor(
     @InjectRepository(User)
-    private usersRepository: Repository<User>,
+    private userRepo: Repository<User>,
     private mailService: MailService
   ) {}
 
@@ -21,20 +25,22 @@ export class UsersService {
     return Math.random().toString(36).substring(2, 12).toUpperCase();
   }
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto, creatorId: number): Promise<User> {
     const verificationKey = randomBytes(20).toString("hex");
     const expire = new Date();
     expire.setHours(expire.getHours() + 24);
 
-    const user = this.usersRepository.create({
+    const user = this.userRepo.create({
       ...createUserDto,
       role: createUserDto.role || "ROLE_USER",
       isActive: createUserDto.isActive ?? false,
+      createdBy: creatorId,
+      updatedBy: creatorId,
       verificationKey,
       verificationExpire: expire,
     });
 
-    const savedUser = await this.usersRepository.save(user);
+    const savedUser = await this.userRepo.save(user);
     await this.mailService.sendVerificationEmail(
       savedUser.email,
       verificationKey
@@ -42,53 +48,96 @@ export class UsersService {
     return savedUser;
   }
 
-  async findAll(query: GetPaginationDto) {
-    const { page, size, fromDate, toDate, searchBy } = query;
+  async getAllUsers(query: GetPaginationDto) {
+  const { page, size, searchBy, fromDate, toDate } = query;
 
-    const qb = this.usersRepository
-      .createQueryBuilder("user")
-      .orderBy("user.createdAt", "DESC")
-      .skip((page - 1) * size)
-      .take(size);
+  const qb = this.userRepo
+    .createQueryBuilder('user')
+    .leftJoinAndSelect('user.updatedByUser', 'modifier')
+    .leftJoinAndSelect('user.createdByUser', 'creator')
+    .orderBy('user.createdAt', 'DESC')
+    .skip((page - 1) * size)
+    .take(size);
 
-    if (fromDate) {
-      qb.andWhere("user.createdAt >= :fromDate", { fromDate });
-    }
+  if (fromDate) qb.andWhere('user.createdAt >= :fromDate', { fromDate });
+  if (toDate) qb.andWhere('user.createdAt <= :toDate', { toDate });
+  if (searchBy)
+    qb.andWhere(
+      '(user.firstName ILIKE :s OR user.lastName ILIKE :s OR user.email ILIKE :s)',
+      { s: `%${searchBy}%` }
+    );
 
-    if (toDate) {
-      qb.andWhere("user.createdAt <= :toDate", { toDate });
-    }
+  const [content, totalElements] = await qb.getManyAndCount();
 
-    if (searchBy) {
-      qb.andWhere(
-        "(user.firstName ILIKE :s OR user.lastName ILIKE :s OR user.email ILIKE :s)",
-        {
-          s: `%${searchBy}%`,
-        }
-      );
-    }
+const formatted = content.map(u => ({
+  ...u,
+  updatedBy: u.updatedByUser
+    ? `${u.updatedByUser.firstName} ${u.updatedByUser.lastName}`
+    : null,
+  createdBy: u.createdByUser
+    ? `${u.createdByUser.firstName} ${u.createdByUser.lastName}`
+    : null,
+  updatedByUser: undefined,
+  createdByUser: undefined,
+}));
 
-    const [content, totalElements] = await qb.getManyAndCount();
+  const totalPages = Math.ceil(totalElements / size);
 
-    const totalPages = Math.ceil(totalElements / size);
+  return {
+    totalElements,
+    totalPages,
+    content: formatted,
+  };
+}
 
-    return {
-      totalElements,
-      totalPages,
-      content,
-    };
-  }
+  // async findAll(query: GetPaginationDto) {
+  //   const { page, size, fromDate, toDate, searchBy } = query;
+
+  //   const qb = this.userRepo
+  //     .createQueryBuilder("user")
+  //     .orderBy("user.createdAt", "DESC")
+  //     .skip((page - 1) * size)
+  //     .take(size);
+
+  //   if (fromDate) {
+  //     qb.andWhere("user.createdAt >= :fromDate", { fromDate });
+  //   }
+
+  //   if (toDate) {
+  //     qb.andWhere("user.createdAt <= :toDate", { toDate });
+  //   }
+
+  //   if (searchBy) {
+  //     qb.andWhere(
+  //       "(user.firstName ILIKE :s OR user.lastName ILIKE :s OR user.email ILIKE :s)",
+  //       {
+  //         s: `%${searchBy}%`,
+  //       }
+  //     );
+  //   }
+
+  //   const [content, totalElements] = await qb.getManyAndCount();
+
+  //   const totalPages = Math.ceil(totalElements / size);
+
+  //   return {
+  //     totalElements,
+  //     totalPages,
+  //     content,
+  //   };
+  // }
 
   async findByEmail(email: string): Promise<User | undefined | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    return this.userRepo.findOne({ where: { email } });
   }
 
   async findProfile(id: number): Promise<User | undefined | null> {
-    return this.usersRepository.findOneBy({ id });
+    const result = this.userRepo.findOneBy({ id });
+    return result;
   }
 
-  async findOne(id: number): Promise<any> {
-    const result = await this.usersRepository.findOneBy({ id });
+  async getDetailUser(id: number): Promise<any> {
+    const result = await this.userRepo.findOneBy({ id });
     return success(
       {
         id: result?.id,
@@ -110,21 +159,45 @@ export class UsersService {
     );
   }
 
-  async update(
-    id: number,
-    updateUserDto: Partial<User>
-  ): Promise<User | undefined | null> {
-    await this.usersRepository.update(id, updateUserDto);
-    return this.findOne(id);
+  async getUpdateUser(id: number, data: Partial<User>, modifierId: number) {
+    if (!id) throw new BadRequestException("User ID required");
+    if (!data || Object.keys(data).length === 0)
+      throw new BadRequestException("No data provided");
+
+    const userToUpdate = await this.userRepo.preload({
+      id,
+      ...data,
+      updatedBy: modifierId,
+    });
+
+    if (!userToUpdate) throw new NotFoundException("User not found");
+
+    const updatedUser = await this.userRepo.save(userToUpdate);
+    const modifieredBy = await this.userRepo.findOne({
+      where: { id: updatedUser.id },
+      relations: ["updatedByUser"],
+    });
+
+return success(
+null,
+    'Update User successfully!'
+  );
   }
 
-  async remove(id: number): Promise<{ deleted: boolean }> {
-    const result = await this.usersRepository.delete(id);
-    return { deleted: (result.affected ?? 0) > 0 };
+  async deleteUser(id: number) {
+    const result = await this.userRepo.delete(id);
+
+    const deleted = (result.affected ?? 0) > 0;
+
+    if (!deleted) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    return success(null, "Deleted user successfully!");
   }
 
   async findByActivationKey(activateKey: string) {
-    return this.usersRepository.findOne({
+    return this.userRepo.findOne({
       where: { verificationKey: activateKey },
     });
   }
@@ -148,7 +221,7 @@ export class UsersService {
     user.password = await this.hashPassword(password);
     user.isActive = true;
     user.verificationKey = null;
-    await this.usersRepository.save(user);
+    await this.userRepo.save(user);
 
     return success(
       { id: user.id, email: user.email },
@@ -157,7 +230,7 @@ export class UsersService {
   }
 
   async resendActivationKey(id: number) {
-    const user = await this.usersRepository.findOne({ where: { id } });
+    const user = await this.userRepo.findOne({ where: { id } });
 
     if (!user) {
       throw new NotFoundException("User not found");
@@ -167,7 +240,7 @@ export class UsersService {
     user.verificationKey = newKey;
     user.verificationExpire = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    await this.usersRepository.save(user);
+    await this.userRepo.save(user);
 
     await this.mailService.sendVerificationEmail(user.email, newKey);
 
@@ -175,18 +248,24 @@ export class UsersService {
   }
 
   async blockUser(id: number, block: boolean) {
-    const user = await this.usersRepository.findOne({ where: { id } });
-  
+    const user = await this.userRepo.findOne({ where: { id } });
+
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
-  
+
     user.isActive = !block;
-    await this.usersRepository.save(user);
-  
+    await this.userRepo.save(user);
+
     return success(
       { id: user.id, email: user.email, isActive: user.isActive },
-      block ? 'User blocked successfully!' : 'User unblocked successfully!'
+      block ? "User blocked successfully!" : "User unblocked successfully!"
     );
-  }  
+  }
+
+  async updateLastLogin(id: number): Promise<void> {
+    await this.userRepo.update(id, {
+      lastLogin: new Date(),
+    });
+  }
 }

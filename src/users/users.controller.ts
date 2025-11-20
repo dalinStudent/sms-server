@@ -1,39 +1,31 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
+  UseGuards,
+  Req,
+  BadRequestException,
 } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { CreateUserDto } from "./dto/create-user.dto";
-import { UpdateUserDto } from "./dto/update-user.dto";
 import { success } from "@/utils/response.util";
 import { GetPaginationDto } from "@/common/pagination.dto";
 import { User } from "./entities/user.entity";
+import { AuthGuard } from "@nestjs/passport";
 
 @Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post("create-user")
-  async create(@Body() createUserDto: CreateUserDto) {
-    const result = await this.usersService.create(createUserDto);
+  @UseGuards(AuthGuard("jwt"))
+  async create(@Body() createUserDto: CreateUserDto, @Req() req: any) {
+    const creatorId = req.user.id;
+    const result = await this.usersService.create(createUserDto, creatorId);
+
     return success(
       {
-        firstName: result.firstName,
-        lastName: result.lastName,
-        phoneNumber: result.phoneNumber,
-        cidNumber: result.cidNumber,
-        staffId: result.staffId,
-        deptName: result.deptName,
-        email: result.email,
-        role: result.role,
-        avatar: result.avatar,
-        isActive: result.isActive,
+        ...result,
       },
       "Create new users successfully!"
     );
@@ -41,7 +33,7 @@ export class UsersController {
 
   @Post("get-all")
   async findAll(@Body() query: GetPaginationDto) {
-    const result = await this.usersService.findAll(query);
+    const result = await this.usersService.getAllUsers(query);
 
     return success({
       totalElements: result.totalElements,
@@ -52,17 +44,26 @@ export class UsersController {
 
   @Post("get-user")
   findOne(@Body() body: { id: number }) {
-    return this.usersService.findOne(body.id);
+    return this.usersService.getDetailUser(body.id);
   }
 
+  @UseGuards(AuthGuard("jwt"))
   @Post("update-user")
-  async updateUser(@Body() body: { id: number; data: Partial<User> }) {
-    return this.usersService.update(body.id, body.data);
+  async updateUser(@Req() req: any, @Body() body: Partial<User>) {
+    const modifierId = req.user.id;
+    if (!body.id) throw new BadRequestException("User ID required");
+
+    const { id, ...data } = body;
+
+    if (Object.keys(data).length === 0)
+      throw new BadRequestException("No data provided");
+
+    return this.usersService.getUpdateUser(id, data, modifierId);
   }
 
   @Post("delete-user")
   remove(@Body() body: { id: number }) {
-    return this.usersService.remove(body.id);
+    return this.usersService.deleteUser(body.id);
   }
 
   @Post("resend-activation-key")

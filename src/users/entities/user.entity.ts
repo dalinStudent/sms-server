@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  UpdateDateColumn,
+} from "typeorm";
 
 @Entity()
 export class User {
@@ -35,19 +42,38 @@ export class User {
   @Column({ default: true })
   isActive!: boolean;
 
-  @Column({ default: 'ROLE_USER' })
+  @Column({ default: "ROLE_USER" })
   role!: string;
 
   @Column({ nullable: true })
   avatar?: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   createdAt!: Date;
 
-  @Column({ type: 'varchar', nullable: true })
+  @ManyToOne(() => User)
+  @JoinColumn({ name: "createdBy" })
+  createdByUser?: User;
+
+  @Column({ nullable: true })
+  createdBy?: number;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: "updatedBy" })
+  updatedByUser?: User;
+
+  @Column({ nullable: true })
+  updatedBy?: number;
+
+  @UpdateDateColumn({ nullable: true })
+  updatedAt?: Date;
+
+  @Column({ type: "timestamp", nullable: true })
+  lastLogin?: Date;
+
+  @Column({ type: "varchar", nullable: true })
   verificationKey: string | null = null;
-  
-  @Column({ type: 'timestamp', nullable: true })
+
+  @Column({ type: "timestamp", nullable: true })
   verificationExpire: Date | null = null;
-  
 }
